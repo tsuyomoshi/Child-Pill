@@ -163,7 +163,7 @@ int main() {
             tempoRecarrega -= 5;  // Diminui o tempo restante para recarregar
         }
 
-        if (GetKeyState(0x5A) & 0x80 && tempoRecarrega <= 0) {
+        if (GetKeyState(0x5A) & 0x80 && tempoRecarrega <= 0) { // Tecla Z
             // Lógica do ataque
             atacando = true;  // Ativar a animação de ataque
             tempoDuracaoAtaque = DURACAO_ATAQUE;  // Define a duração da animação de ataque
@@ -179,11 +179,11 @@ int main() {
 
         setvisualpage(pg);
 
-        if (GetKeyState(VK_LEFT) & 0x80) velocidadeX = -5;
-        else if (GetKeyState(VK_RIGHT) & 0x80) velocidadeX = 5;
+        if (GetKeyState(VK_LEFT) & 0x80) velocidadeX = -5; // Tecla para <
+        else if (GetKeyState(VK_RIGHT) & 0x80) velocidadeX = 5; // Tecla para >
         else velocidadeX = 0;
 
-        if (GetKeyState(VK_SPACE) & 0x80 && personagemY == ALTURA_TELA - ALTURA_CELULA) {
+        if (GetKeyState(VK_SPACE) & 0x80 && personagemY == ALTURA_TELA - ALTURA_CELULA) { // Tecla Espaço
             velocidadeY = -VELOCIDADE_PULO;
         }
 
