@@ -8,17 +8,21 @@ const int LARGURA_TELA = 1200;
 const int ALTURA_TELA = 800;
 const int LARGURA_CELULA = 100;
 const int ALTURA_CELULA = 100;
-const int TAMANHO_ATAQUE = 50;  // Tamanho da animação de ataque
-const int DURACAO_ATAQUE = 100;  // Duração da animação de ataque em milissegundos
+const int TAMANHO_ATAQUE = 50;
+const int DURACAO_ATAQUE = 100;
 const int GRAVIDADE = 1;
 const int VELOCIDADE_PULO = 15;
-const int TEMPO_RECARREGA_ATAQUE = 300;  // Tempo de recarga do ataque em milissegundos
+const int TEMPO_RECARREGA_ATAQUE = 300;
+
+struct Inimigo {
+    int x, y;
+    bool ativo;
+};
 
 void desenharPersonagem(int x, int y, bool atacando) {
     setfillstyle(SOLID_FILL, YELLOW);
     bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
 
-    // Desenha a animação de ataque se estiver atacando
     if (atacando) {
         setfillstyle(SOLID_FILL, RED);
         bar(x + LARGURA_CELULA, y, x + LARGURA_CELULA + TAMANHO_ATAQUE, y + ALTURA_CELULA);
@@ -40,6 +44,13 @@ void desenharFimDeJogo(int x, int y) {
     bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
 }
 
+void desenharInimigo(int x, int y, bool ativo) {
+    if (ativo) {
+        setfillstyle(SOLID_FILL, BLUE);
+        bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
+    }
+}
+
 void trocarPaginas(int &pg) {
     if (pg == 1) {
         pg = 2;
@@ -52,87 +63,94 @@ int main() {
     int pg = 0;
     initwindow(LARGURA_TELA, ALTURA_TELA, "Child Pill");
 
-    int personagemX = 0, personagemY = 0; // Inicializa a posição do personagem com base na matriz
-    int velocidadeX = 0, velocidadeY = 0; // Velocidade do personagem
-    int tempoRecarrega = 0;  // Tempo restante para recarregar o ataque
-
-    bool atacando = false;  // Adiciona uma variável para controlar se o personagem está atacando
-    int tempoDuracaoAtaque = 0;  // Controla o tempo de exibição da animação de ataque
+    int personagemX = 0, personagemY = 0;
+    int velocidadeX = 0, velocidadeY = 0;
+    int tempoRecarrega = 0;
+    bool atacando = false;
+    int tempoDuracaoAtaque = 0;
 
     const int NUM_LINHAS = 8;
     const int NUM_COLUNAS = 50;
 
+    // Adicione manualmente a matriz aqui
     int mapa[NUM_LINHAS][NUM_COLUNAS] = {
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1},
-        {0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1 ,1 ,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1},
+{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1},
+{2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+{1, 1, 1, 4, 1, 1, 1 ,1 ,1, 1, 1, 4, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
     };
 
     const int ELEMENTO_SOLIDO = 9;
 
-    // Localiza a posição inicial do personagem na matriz
-    for (int i = 0; i < NUM_LINHAS; ++i) {
-        for (int j = 0; j < NUM_COLUNAS; ++j) {
-            if (mapa[i][j] == 2) {
-                personagemX = j * LARGURA_CELULA;
-                personagemY = i * ALTURA_CELULA;
-            }
-        }
+    const int INIMIGO = 4;
+    const int MAX_INIMIGOS = 3; // Defina o número máximo de inimigos que deseja permitir
+
+    Inimigo inimigos[MAX_INIMIGOS];
+
+    // Inicializa os inimigos
+    for (int i = 0; i < MAX_INIMIGOS; ++i) {
+        inimigos[i].x = rand() % ((NUM_COLUNAS - 2) * LARGURA_CELULA) + LARGURA_CELULA; // Não nasce na borda esquerda
+        inimigos[i].y = rand() % ((NUM_LINHAS - 2) * ALTURA_CELULA) + ALTURA_CELULA;    // Não nasce na borda superior
+        inimigos[i].ativo = true;
     }
 
-    bool vitoria = false;  // Adiciona uma variável para controlar a vitória
+    bool vitoria = false;
 
     while (1) {
         trocarPaginas(pg);
         setactivepage(pg);
         cleardevice();
 
-        // Lógica da câmera
         int cameraX = personagemX - LARGURA_TELA / 2;
         if (cameraX < 0) cameraX = 0;
         if (cameraX > (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_TELA) cameraX = (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_TELA;
 
-        // Desenhar o mapa
         for (int i = 0; i < NUM_LINHAS; ++i) {
             for (int j = 0; j < NUM_COLUNAS; ++j) {
                 int posX = j * LARGURA_CELULA - cameraX;
                 int posY = i * ALTURA_CELULA;
 
-                if (posX < LARGURA_TELA && posX + LARGURA_CELULA > 0) {  // Verifica se a célula está dentro dos limites da tela
+                if (posX < LARGURA_TELA && posX + LARGURA_CELULA > 0) {
                     switch (mapa[i][j]) {
                         case 0:
                             desenharAreaVazia(posX, posY);
                             break;
                         case 1:
-                        case ELEMENTO_SOLIDO:  // Elementos sólidos
+                        case ELEMENTO_SOLIDO:
                             desenharPlataforma(posX, posY);
                             break;
                         case 3:
                             desenharFimDeJogo(posX, posY);
                             if (personagemY == i * ALTURA_CELULA && !vitoria) {
-                                vitoria = true;  // Define que o jogador venceu
+                                vitoria = true;
                             }
                             break;
-                        // ... (outras opções de desenho)
                     }
                 }
             }
         }
 
-        // Atualizar posição do personagem com base na velocidade
+        // Verificar colisão com os inimigos
+        for (int i = 0; i < MAX_INIMIGOS; ++i) {
+            if (inimigos[i].ativo &&
+                personagemX < inimigos[i].x + LARGURA_CELULA &&
+                personagemX + LARGURA_CELULA > inimigos[i].x &&
+                personagemY < inimigos[i].y + ALTURA_CELULA &&
+                personagemY + ALTURA_CELULA > inimigos[i].y) {
+                inimigos[i].ativo = false;
+            }
+        }
+
         personagemX += velocidadeX;
         personagemY += velocidadeY;
 
-        // Aplicar gravidade apenas se não estiver em uma plataforma
         int colunaAtual = personagemX / LARGURA_CELULA;
         int linhaAtual = personagemY / ALTURA_CELULA;
 
-        // Verificar colisão vertical
         if (linhaAtual >= 0 && linhaAtual < NUM_LINHAS && colunaAtual >= 0 && colunaAtual < NUM_COLUNAS) {
             if (mapa[linhaAtual][colunaAtual] != 1 && mapa[linhaAtual][colunaAtual] != ELEMENTO_SOLIDO) {
                 velocidadeY += GRAVIDADE;
@@ -141,12 +159,10 @@ int main() {
                 personagemY = linhaAtual * ALTURA_CELULA;
             }
         } else {
-            // Se o personagem estiver fora dos limites, coloque-o de volta dentro
             personagemX = 0;
             personagemY = 0;
         }
 
-        // Verificar colisão horizontal
         int novaColuna = (personagemX + velocidadeX) / LARGURA_CELULA;
         if (novaColuna >= 0 && novaColuna < NUM_COLUNAS) {
             if (mapa[linhaAtual][novaColuna] != 1 && mapa[linhaAtual][novaColuna] != ELEMENTO_SOLIDO) {
@@ -154,47 +170,54 @@ int main() {
             }
         }
 
-        // Garantir que o personagem não ultrapasse as bordas da matriz
         if (personagemX < 0) personagemX = 0;
         if (personagemX > (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_CELULA) personagemX = (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_CELULA;
 
         // Lógica do ataque
         if (tempoRecarrega > 0) {
-            tempoRecarrega -= 5;  // Diminui o tempo restante para recarregar
+            tempoRecarrega -= 5;
         }
 
-        if (GetKeyState(0x5A) & 0x80 && tempoRecarrega <= 0) { // Tecla Z
-            // Lógica do ataque
-            atacando = true;  // Ativar a animação de ataque
-            tempoDuracaoAtaque = DURACAO_ATAQUE;  // Define a duração da animação de ataque
-            // Implemente o que você deseja que aconteça durante o ataque
-            // Por exemplo, definir a variável de dano ou remover inimigos
+        // Modificado para verificar a tecla de ataque continuamente
+        if (GetKeyState(0x5A) & 0x80 && tempoRecarrega <= 0) {
+            atacando = true; // Ativar animação de ataque
+            for (int i = 0; i < MAX_INIMIGOS; ++i) {
+                if (inimigos[i].ativo &&
+                    personagemX + LARGURA_CELULA >= inimigos[i].x &&
+                    personagemX <= inimigos[i].x + LARGURA_CELULA &&
+                    personagemY + ALTURA_CELULA >= inimigos[i].y &&
+                    personagemY <= inimigos[i].y + ALTURA_CELULA) {
+                    inimigos[i].ativo = false;
+                    break; // Para o loop após atacar um inimigo
+                }
+            }
 
-            // Reinicia o tempo de recarga
             tempoRecarrega = TEMPO_RECARREGA_ATAQUE;
         }
 
-        // Desenhar o personagem por último
+        for (int i = 0; i < MAX_INIMIGOS; ++i) {
+            desenharInimigo(inimigos[i].x - cameraX, inimigos[i].y, inimigos[i].ativo);
+        }
+
         desenharPersonagem(personagemX - cameraX, personagemY, atacando);
 
         setvisualpage(pg);
 
-        if (GetKeyState(VK_LEFT) & 0x80) velocidadeX = -5; // Tecla para <
-        else if (GetKeyState(VK_RIGHT) & 0x80) velocidadeX = 5; // Tecla para >
+        if (GetKeyState(VK_LEFT) & 0x80) velocidadeX = -5;
+        else if (GetKeyState(VK_RIGHT) & 0x80) velocidadeX = 5;
         else velocidadeX = 0;
 
-        if (GetKeyState(VK_SPACE) & 0x80 && personagemY == ALTURA_TELA - ALTURA_CELULA) { // Tecla Espaço
+        if (GetKeyState(VK_SPACE) & 0x80 && personagemY == ALTURA_TELA - ALTURA_CELULA) {
             velocidadeY = -VELOCIDADE_PULO;
         }
 
-        // Reduz o tempo de duração da animação de ataque
         if (tempoDuracaoAtaque > 0) {
             tempoDuracaoAtaque -= 5;
         } else {
-            atacando = false;  // Desativar a animação de ataque quando a duração acabar
+            atacando = false;
         }
 
-        delay(5); // Adicione um pequeno atraso para controlar a velocidade do loop
+        delay(5);
     }
 
     closegraph();
