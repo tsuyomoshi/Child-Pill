@@ -1,54 +1,263 @@
-#include <graphics.h>
-#include <conio.h>
-#include <cstdlib>
-#include <ctime>
-#include <iostream>
+#include<graphics.h>
 
 const int LARGURA_TELA = 1200;
 const int ALTURA_TELA = 800;
-const int LARGURA_CELULA = 100;
-const int ALTURA_CELULA = 100;
-const int TAMANHO_ATAQUE = 50;
-const int DURACAO_ATAQUE = 100;
-const int GRAVIDADE = 1;
-const int VELOCIDADE_PULO = 15;
-const int TEMPO_RECARREGA_ATAQUE = 300;
+const int TAMANHO_CELULA = 100;
 
-struct Inimigo {
-    int x, y;
-    bool ativo;
+int LARGURA_LOADING = 5000;
+int ALTURA_LOADING = 800;
+int WINDOW_LOADINGX = -4000;
+int WINDOW_LOADINGY = -4000;
+
+const int linhas = 8;
+const int colunas = 100;
+
+int x, y;
+int passoX = 25;
+
+const int cameraFollowOffset = 100;
+
+int larguraPersonagem = TAMANHO_CELULA;
+int alturaPersonagem = TAMANHO_CELULA;
+int plataformaLargura = TAMANHO_CELULA;
+int plataformaAltura = TAMANHO_CELULA;
+int larguraInimigo = TAMANHO_CELULA;
+int alturaInimigo = TAMANHO_CELULA;
+
+int fimJogo = false;  // Adicionamos uma variável para controlar o estado do jogo
+
+void *fundo, *vazio, *plataforma, *personagemMasc, *personagem, *inimigo, *fim;
+
+int pg = 0;
+int cameraX;
+
+int* inimigoX;
+int* inimigoY;
+
+float velocityY = 0;
+float gravity = 4;
+
+bool canJump = true;
+
+int contaInimigos = 0;
+
+int mapa[linhas][colunas] = {
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 4, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+	{0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 4, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+	{1, 1, 1, 1, 1, 1, 1 ,1 ,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 };
 
-void desenharPersonagem(int x, int y, bool atacando) {
-    setfillstyle(SOLID_FILL, YELLOW);
-    bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
+bool colisao(int px, int py, int largura, int altura) {
+    int colunaEsquerda = (px + cameraX) / TAMANHO_CELULA;
+    int colunaDireita = (px + largura + cameraX) / TAMANHO_CELULA;
+    int linhaSuperior = py / TAMANHO_CELULA;
+    int linhaInferior = (py + altura) / TAMANHO_CELULA;
 
-    if (atacando) {
-        setfillstyle(SOLID_FILL, RED);
-        bar(x + LARGURA_CELULA, y, x + LARGURA_CELULA + TAMANHO_ATAQUE, y + ALTURA_CELULA);
+    for (int i = linhaSuperior; i <= linhaInferior; ++i) {
+        for (int j = colunaEsquerda; j <= colunaDireita; ++j) {
+            if (mapa[i][j] == 1) { // Verifica se há uma plataforma na posição
+                int plataformaX = j * TAMANHO_CELULA - cameraX;
+                int plataformaY = i * TAMANHO_CELULA;
+                
+
+
+                // Verifica se há sobreposição de retângulos
+                if (px < plataformaX + TAMANHO_CELULA &&
+                    px + largura > plataformaX &&
+                    py < plataformaY + TAMANHO_CELULA &&
+                    py + altura > plataformaY
+					) {
+					rectangle((j * (TAMANHO_CELULA))  - cameraX, i * TAMANHO_CELULA, (j * (TAMANHO_CELULA))  - cameraX + TAMANHO_CELULA, i * TAMANHO_CELULA + TAMANHO_CELULA);
+                    // Colisão detectada, ajuste a posição do personagem
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+
+void cargaImagens() {
+//	readimagefile("area_vazia.bmp", 0, 0, TAMANHO_CELULA, TAMANHO_CELULA);
+//  getimage(0, 0, TAMANHO_CELULA, TAMANHO_CELULA, vazio);
+    
+    readimagefile("fundo.bmp", 0, 0, LARGURA_TELA, ALTURA_TELA);
+    getimage(0, 0, LARGURA_TELA, ALTURA_TELA, fundo);
+    
+    readimagefile("plataforma.bmp", 0, 0, plataformaLargura, plataformaAltura);
+    getimage(0, 0, plataformaLargura, plataformaAltura, plataforma);
+    
+    readimagefile("protagonistaMasc.bmp", 0, 0, larguraPersonagem, alturaPersonagem);
+    getimage(0, 0, larguraPersonagem, alturaPersonagem, personagemMasc);
+
+    readimagefile("protagonista.bmp", 0, 0, larguraPersonagem, alturaPersonagem);
+    getimage(0, 0, larguraPersonagem, alturaPersonagem, personagem);
+	    
+/*  readimagefile("protaCorre.bmp", 0, 0, larguraPersonagem, alturaPersonagem);
+    getimage(0, 0, larguraPersonagem, alturaPersonagem, personagem);
+
+    readimagefile("protaCorreMasc.bmp", 0, 0, larguraPersonagem, alturaPersonagem);
+    getimage(0, 0, larguraPersonagem, alturaPersonagem, personagem);
+
+    readimagefile("protaPula.bmp", 0, 0, larguraPersonagem, alturaPersonagem);
+    getimage(0, 0, larguraPersonagem, alturaPersonagem, personagem);
+
+    readimagefile("protaPulaMasc.bmp", 0, 0, larguraPersonagem, alturaPersonagem);
+    getimage(0, 0, larguraPersonagem, alturaPersonagem, personagem); */
+				    
+    readimagefile("inimigo.bmp", 0, 0, larguraInimigo, alturaInimigo);
+    getimage(0, 0, larguraInimigo, alturaInimigo, inimigo);
+    
+    readimagefile("fim_da_fase.bmp", 0, 0, TAMANHO_CELULA, TAMANHO_CELULA);
+    getimage(0, 0, TAMANHO_CELULA, TAMANHO_CELULA, fim);
+}
+
+void memorias() {
+	fundo = malloc(imagesize(0, 0, LARGURA_TELA, ALTURA_TELA));
+    vazio = malloc(imagesize(0, 0, TAMANHO_CELULA, TAMANHO_CELULA));
+    plataforma = malloc(imagesize(0, 0, plataformaLargura, plataformaAltura));
+    personagem = malloc(imagesize(0, 0, larguraPersonagem, alturaPersonagem));
+    personagemMasc = malloc(imagesize(0, 0, larguraPersonagem, alturaPersonagem));    
+    inimigo = malloc(imagesize(0, 0, larguraInimigo, alturaInimigo));
+    fim = malloc(imagesize(0, 0, TAMANHO_CELULA, TAMANHO_CELULA));
+}
+
+void limpaMemorias() {
+	free(fundo);
+	free(vazio);
+    free(plataforma);
+    free(personagemMasc);
+    free(personagem);
+    free(inimigo);
+    free(fim);
+    free(inimigoX);
+    free(inimigoY);
+}
+
+void achandoPersonagem() {
+    int i, j;
+    
+    for (i = 0; i < linhas; i++) {
+        for (j = 0; j < colunas; j++) {
+            if (mapa[i][j] == 2) { //Ponto de start personagem
+                x = j * TAMANHO_CELULA; // Ajuste na posição inicial do personagem
+                y = i * TAMANHO_CELULA;
+            } if (mapa[i][j] == 4) {
+            	inimigoX[contaInimigos] = j * TAMANHO_CELULA;
+            	inimigoY[contaInimigos] = i * TAMANHO_CELULA;
+            	contaInimigos++;
+            }
+        }
+    }
+}
+ 
+void desenharFundo() {
+	putimage(0, 0, fundo, COPY_PUT);
+} 
+            
+void desenharFase() {
+    int i, j;
+    
+    for (i = 0; i < linhas; ++i) {
+        for (j = 0; j < colunas; ++j) {
+			if (mapa[i][j] == 1) { //Plataformas
+            	putimage((j * (TAMANHO_CELULA))  - cameraX, i * TAMANHO_CELULA, plataforma, COPY_PUT);
+            	
+            } if (mapa[i][j] == 3) { //Final
+                putimage((j * (TAMANHO_CELULA))  - cameraX, i * TAMANHO_CELULA, fim, COPY_PUT);
+            }
+        }
     }
 }
 
-void desenharPlataforma(int x, int y) {
-    setfillstyle(SOLID_FILL, WHITE);
-    bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
+
+void desenharPersonagem() {
+    putimage(x, y, personagemMasc, AND_PUT);
+    putimage(x, y, personagem, OR_PUT);
 }
 
-void desenharAreaVazia(int x, int y) {
-    setfillstyle(SOLID_FILL, BLACK);
-    bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
+void desenharInimigos() {
+	int k;
+	for (k = 0; k < contaInimigos; k++) {
+		putimage(inimigoX[k] - cameraX, inimigoY[k], inimigo, COPY_PUT);
+	}
 }
 
-void desenharFimDeJogo(int x, int y) {
-    setfillstyle(SOLID_FILL, RED);
-    bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
+bool colisaoFimFase(int px, int py, int largura, int altura) {
+    int colunaAtual = (px + cameraX) / TAMANHO_CELULA;
+    int linhaAtual = py / TAMANHO_CELULA;
+
+    return (mapa[linhaAtual][colunaAtual] == 3);
 }
 
-void desenharInimigo(int x, int y, bool ativo) {
-    if (ativo) {
-        setfillstyle(SOLID_FILL, BLUE);
-        bar(x, y, x + LARGURA_CELULA, y + ALTURA_CELULA);
+void andarPersonagem() {
+    if (GetKeyState(VK_LEFT) & 0x80) {
+        if (!colisao(x - passoX, y - 10, larguraPersonagem, alturaPersonagem)) {
+            //
+            if(x < (LARGURA_TELA / 2) - cameraFollowOffset && cameraX > 0)
+            {
+            	cameraX -= passoX;
+			}
+			else
+			{
+				x = x - passoX;
+			}
+            
+        }else
+        {
+        	//mova para o lado da plataforma
+		}
     }
+
+    if (GetKeyState(VK_RIGHT) & 0x80) {
+        if (!colisao(x + passoX, y - 10, larguraPersonagem, alturaPersonagem)) {
+            if(x > (LARGURA_TELA / 2) + cameraFollowOffset && cameraX < (colunas * TAMANHO_CELULA) - LARGURA_TELA)
+            {
+            	cameraX += passoX;
+			}
+			else
+			{
+				x = x + passoX;
+			}
+        }
+    }
+
+    if (GetKeyState(VK_UP) & 0x80) {
+        if (!colisao(x, y - passoX, larguraPersonagem, alturaPersonagem) && canJump) {
+        	canJump = false;
+            velocityY = -45
+			;
+        }
+    }
+
+        if (!colisao(x, y + velocityY, larguraPersonagem, alturaPersonagem)) {
+            velocityY += gravity;
+        }
+        else
+        {
+        	canJump = true;
+        	velocityY = 0;
+		}
+    
+    if(velocityY > 20)
+    {
+    	velocityY = 20;
+	}
+    
+    y += velocityY;
+	
+        if (colisaoFimFase(x, y, larguraPersonagem, alturaPersonagem)) {
+        fimJogo = true;
+        return;
+    }
+
 }
 
 void trocarPaginas(int &pg) {
@@ -60,166 +269,49 @@ void trocarPaginas(int &pg) {
 }
 
 int main() {
-    int pg = 0;
+	
+	inimigoX = (int *)malloc(sizeof(int) * 6);
+	inimigoY = (int *)malloc(sizeof(int) * 6);
+	
+	initwindow(LARGURA_LOADING, ALTURA_LOADING, "LOADING",  WINDOW_LOADINGX, WINDOW_LOADINGY); //Tela de LOADING
+	
+	memorias();
+	cargaImagens();
+    
+    achandoPersonagem();
+    
+    closegraph();
+    
     initwindow(LARGURA_TELA, ALTURA_TELA, "Child Pill");
 
-    int personagemX = 0, personagemY = 0;
-    int velocidadeX = 0, velocidadeY = 0;
-    int tempoRecarrega = 0;
-    bool atacando = false;
-    int tempoDuracaoAtaque = 0;
-
-    const int NUM_LINHAS = 8;
-    const int NUM_COLUNAS = 50;
-
-    // Adicione manualmente a matriz aqui
-    int mapa[NUM_LINHAS][NUM_COLUNAS] = {
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3},
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1},
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1},
-{2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-{1, 1, 1, 4, 1, 1, 1 ,1 ,1, 1, 1, 4, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-    };
-
-    const int ELEMENTO_SOLIDO = 9;
-
-    const int INIMIGO = 4;
-    const int MAX_INIMIGOS = 3; // Defina o número máximo de inimigos que deseja permitir
-
-    Inimigo inimigos[MAX_INIMIGOS];
-
-    // Inicializa os inimigos
-    for (int i = 0; i < MAX_INIMIGOS; ++i) {
-        inimigos[i].x = rand() % ((NUM_COLUNAS - 2) * LARGURA_CELULA) + LARGURA_CELULA; // Não nasce na borda esquerda
-        inimigos[i].y = rand() % ((NUM_LINHAS - 2) * ALTURA_CELULA) + ALTURA_CELULA;    // Não nasce na borda superior
-        inimigos[i].ativo = true;
-    }
-
-    bool vitoria = false;
 
     while (1) {
         trocarPaginas(pg);
         setactivepage(pg);
         cleardevice();
-
-        int cameraX = personagemX - LARGURA_TELA / 2;
+        
+        //cameraX = x;// * 5;
         if (cameraX < 0) cameraX = 0;
-        if (cameraX > (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_TELA) cameraX = (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_TELA;
+        if (cameraX > (colunas * TAMANHO_CELULA) - LARGURA_TELA) cameraX = (colunas * TAMANHO_CELULA) - LARGURA_TELA;
 
-        for (int i = 0; i < NUM_LINHAS; ++i) {
-            for (int j = 0; j < NUM_COLUNAS; ++j) {
-                int posX = j * LARGURA_CELULA - cameraX;
-                int posY = i * ALTURA_CELULA;
-
-                if (posX < LARGURA_TELA && posX + LARGURA_CELULA > 0) {
-                    switch (mapa[i][j]) {
-                        case 0:
-                            desenharAreaVazia(posX, posY);
-                            break;
-                        case 1:
-                        case ELEMENTO_SOLIDO:
-                            desenharPlataforma(posX, posY);
-                            break;
-                        case 3:
-                            desenharFimDeJogo(posX, posY);
-                            if (personagemY == i * ALTURA_CELULA && !vitoria) {
-                                vitoria = true;
-                            }
-                            break;
-                    }
-                }
-            }
-        }
-
-        // Verificar colisão com os inimigos
-        for (int i = 0; i < MAX_INIMIGOS; ++i) {
-            if (inimigos[i].ativo &&
-                personagemX < inimigos[i].x + LARGURA_CELULA &&
-                personagemX + LARGURA_CELULA > inimigos[i].x &&
-                personagemY < inimigos[i].y + ALTURA_CELULA &&
-                personagemY + ALTURA_CELULA > inimigos[i].y) {
-                inimigos[i].ativo = false;
-            }
-        }
-
-        personagemX += velocidadeX;
-        personagemY += velocidadeY;
-
-        int colunaAtual = personagemX / LARGURA_CELULA;
-        int linhaAtual = personagemY / ALTURA_CELULA;
-
-        if (linhaAtual >= 0 && linhaAtual < NUM_LINHAS && colunaAtual >= 0 && colunaAtual < NUM_COLUNAS) {
-            if (mapa[linhaAtual][colunaAtual] != 1 && mapa[linhaAtual][colunaAtual] != ELEMENTO_SOLIDO) {
-                velocidadeY += GRAVIDADE;
-            } else {
-                velocidadeY = 0;
-                personagemY = linhaAtual * ALTURA_CELULA;
-            }
-        } else {
-            personagemX = 0;
-            personagemY = 0;
-        }
-
-        int novaColuna = (personagemX + velocidadeX) / LARGURA_CELULA;
-        if (novaColuna >= 0 && novaColuna < NUM_COLUNAS) {
-            if (mapa[linhaAtual][novaColuna] != 1 && mapa[linhaAtual][novaColuna] != ELEMENTO_SOLIDO) {
-                personagemX += velocidadeX;
-            }
-        }
-
-        if (personagemX < 0) personagemX = 0;
-        if (personagemX > (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_CELULA) personagemX = (NUM_COLUNAS * LARGURA_CELULA) - LARGURA_CELULA;
-
-        // Lógica do ataque
-        if (tempoRecarrega > 0) {
-            tempoRecarrega -= 5;
-        }
-
-        // Modificado para verificar a tecla de ataque continuamente
-        if (GetKeyState(0x5A) & 0x80 && tempoRecarrega <= 0) {
-            atacando = true; // Ativar animação de ataque
-            for (int i = 0; i < MAX_INIMIGOS; ++i) {
-                if (inimigos[i].ativo &&
-                    personagemX + LARGURA_CELULA >= inimigos[i].x &&
-                    personagemX <= inimigos[i].x + LARGURA_CELULA &&
-                    personagemY + ALTURA_CELULA >= inimigos[i].y &&
-                    personagemY <= inimigos[i].y + ALTURA_CELULA) {
-                    inimigos[i].ativo = false;
-                    break; // Para o loop após atacar um inimigo
-                }
-            }
-
-            tempoRecarrega = TEMPO_RECARREGA_ATAQUE;
-        }
-
-        for (int i = 0; i < MAX_INIMIGOS; ++i) {
-            desenharInimigo(inimigos[i].x - cameraX, inimigos[i].y, inimigos[i].ativo);
-        }
-
-        desenharPersonagem(personagemX - cameraX, personagemY, atacando);
+		desenharFundo();		
+		desenharFase();
+		desenharInimigos();
+        desenharPersonagem();
+        andarPersonagem();
 
         setvisualpage(pg);
-
-        if (GetKeyState(VK_LEFT) & 0x80) velocidadeX = -5;
-        else if (GetKeyState(VK_RIGHT) & 0x80) velocidadeX = 5;
-        else velocidadeX = 0;
-
-        if (GetKeyState(VK_SPACE) & 0x80 && personagemY == ALTURA_TELA - ALTURA_CELULA) {
-            velocidadeY = -VELOCIDADE_PULO;
-        }
-
-        if (tempoDuracaoAtaque > 0) {
-            tempoDuracaoAtaque -= 5;
-        } else {
-            atacando = false;
-        }
-
+        
+        if (fimJogo)
+        break;
+        
         delay(5);
+
     }
 
     closegraph();
+    
+    limpaMemorias();
+    
     return 0;
 }
